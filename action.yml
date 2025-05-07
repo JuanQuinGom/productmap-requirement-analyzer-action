@@ -135,25 +135,15 @@ runs:
 
     - name: Generate and get requirements results for repository
       shell: bash
-      if: env.MATCHING_FILES_STRING != ''
       run: |
-        ALL_RESPONSES=""
-        FILE_NAMES=()
-        FILE_REPO_URLS=()
-        PUBLIC_URLS=()
-
         # Detect if the repository is a fork and process files accordingly
         REPO_URL="https://github.com/${{ github.repository }}"
         BRANCH_NAME="${GITHUB_REF_NAME}"
 
         echo "Processing files from repository: $REPO_URL on branch: $BRANCH_NAME"
-
-        
-        REPOSITORY_URL="${REPO_URL}/blob/${BRANCH_NAME}"
-        
         # Send file to create a generated map and get the requirement analysis result
         echo "Send file to create a generated map and get the requirement analysis result"
-        pm-cli "$FILE_URL" "$NICKNAME" "$PUBLIC_EMAIL" --action="analyze_requirements" > response.json
+        pm-cli "REPO_URL" "$NICKNAME" "$PUBLIC_EMAIL" --action="analyze_requirements" > response.json
         EXIT_CODE=$?
         if [ $EXIT_CODE -ne 0 ]; then
             echo "pm-cli failed with exit code $EXIT_CODE." >&2
