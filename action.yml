@@ -201,8 +201,11 @@ runs:
 
         echo "ℹ️ Starting markdown generation..." >&2
 
-        # Header
+        # Header with image
         echo "# ProductMap Requirement Alignment Results" > "$MD_FILENAME"
+        echo "" >> "$MD_FILENAME
+        echo "<p align=\"center\"><a href=\"$PRODUCT_MAP_HOME_URL\" target=\"_blank\"><img src=\"$PRODUCT_MAP_LOGO_URL\" width=\"50%\"></a></p>\n" >> "$MD_FILENAME"
+        echo "" >> "$MD_FILENAME"
         echo "**Creation Date:** $CONTENT_DATE" >> "$MD_FILENAME"
         echo "" >> "$MD_FILENAME"
         echo "## Analysis Results" >> "$MD_FILENAME"
