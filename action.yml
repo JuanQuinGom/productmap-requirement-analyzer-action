@@ -128,25 +128,38 @@ runs:
         echo "PUBLIC_EMAIL=$PUBLIC_EMAIL" >> $GITHUB_ENV
 
 
-    - name: Generate mock response (act only)
+    - name: Install ProductMap CLI
       shell: bash
       run: |
-        echo '[
-          {
-            "feature_id": "MOCK-1",
-            "feature_description": "Simulated Authentication",
-            "key_criteria": "OAuth2, JWT",
-            "status": "Complete",
-            "notes": "Mock data for local testing"
-          },
-          {
-            "feature_id": "MOCK-2",
-            "feature_description": "Mock Data Export",
-            "key_criteria": "CSV, JSON",
-            "status": "In Progress",
-            "notes": "Sample incomplete feature"
-          }
-        ]' > response.json
+        echo "Installing ProductMap CLI"
+        pip install productmap-cli
+
+        - name: Generate and get requirements alignment results for repository
+          shell: bash
+          run: |
+            # Detect if the repository is a fork and process files accordingly
+            REPO_URL="https://github.com/${{ github.repository }}"
+            BRANCH_NAME="${GITHUB_REF_NAME}"
+            
+            echo "Processing files from repository: $REPO_URL on branch: $BRANCH_NAME"
+            # Send file to create a generated map and get the requirement analysis result
+            echo "Send file to create a generated map and get the requirement analysis result"
+            pm-cli "$REPO_URL" "$NICKNAME" "$PUBLIC_EMAIL" --action="analyze_requirements" > response.json
+            EXIT_CODE=$?
+            if [ $EXIT_CODE -ne 0 ]; then
+                echo "pm-cli failed with exit code $EXIT_CODE." >&2
+                cat response.json
+                exit $EXIT_CODE
+            fi
+              echo "Response from pm-cli:"
+              cat response.json
+            
+              # Append the response to the combined output
+              RESPONSE=$(tail -n 1 response.json)
+            
+              echo "Response from pm-cli:"
+              echo "$RESPONSE"
+            done
 
     - name: Create markdown file with results
       shell: bash
