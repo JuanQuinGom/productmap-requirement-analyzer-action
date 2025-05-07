@@ -163,53 +163,95 @@ runs:
     - name: Create markdown file with results
       shell: bash
       run: |
-        # Get current date for filename and content
+        # Debug: Show environment info
+        echo "::group::Debug Info"
+        echo "PWD: $(pwd)"
+        echo "Files in directory:"
+        ls -la
+        echo "::endgroup::"
+
+        # Validate JSON file exists
+        if [ ! -f "response.json" ]; then
+          echo "❌ Error: response.json not found!" >&2
+          exit 1
+        fi
+
+        # Validate jq is installed
+        if ! command -v jq &> /dev/null; then
+          echo "❌ Error: jq not installed!" >&2
+          exit 1
+        fi
+
+        # Validate JSON syntax
+        if ! jq empty response.json; then
+          echo "❌ Invalid JSON in response.json!" >&2
+          exit 1
+        fi
+
+        echo "::group::JSON Content"
+        cat response.json
+        echo "::endgroup::"
+
+        # Create markdown with error handling
+        set -euo pipefail  # Enable strict mode
+
         FILENAME_DATE=$(date +'%H:%M:%S_%d%m%y')
         CONTENT_DATE=$(date +'%Y-%m-%d %H:%M:%S')
-        
-        # Create filename
         MD_FILENAME="requirement_analysis_results_${FILENAME_DATE}.md"
-        
-        # Create markdown content
-        echo "# ProductMap Requirement Alignment Results" > $MD_FILENAME
-        echo "**Creation Date:** $CONTENT_DATE" >> $MD_FILENAME
-        echo "" >> $MD_FILENAME
-        echo "## Analysis Results" >> $MD_FILENAME
-        echo "" >> $MD_FILENAME
-        
-        # Create table header
-        echo "| Feature ID | Feature Description | Key Criteria | Status | Notes |" >> $MD_FILENAME
-        echo "|-----------|---------------------|--------------|--------|-------|" >> $MD_FILENAME
-        
-        # Process each object in the JSON array
+
+        echo "ℹ️ Starting markdown generation..." >&2
+
+        # Header
+        echo "# ProductMap Requirement Alignment Results" > "$MD_FILENAME"
+        echo "**Creation Date:** $CONTENT_DATE" >> "$MD_FILENAME"
+        echo "" >> "$MD_FILENAME"
+        echo "## Analysis Results" >> "$MD_FILENAME"
+        echo "" >> "$MD_FILENAME"
+
+        # Table
+        echo "| Feature ID | Feature Description | Key Criteria | Status | Notes |" >> "$MD_FILENAME"
+        echo "|-----------|---------------------|--------------|--------|-------|" >> "$MD_FILENAME"
+
+        # Process JSON
+        echo "ℹ️ Processing JSON data..." >&2
         jq -c '.[]' response.json | while read -r item; do
-          FEATURE_ID=$(echo "$item" | jq -r '.feature_id')
-          FEATURE_DESC=$(echo "$item" | jq -r '.feature_description')
-          KEY_CRITERIA=$(echo "$item" | jq -r '.key_criteria')
-          STATUS=$(echo "$item" | jq -r '.status')
-          NOTES=$(echo "$item" | jq -r '.notes')
+          echo "Processing item: $item" >&2
           
-          # Add row to table
-          echo "| $FEATURE_ID | $FEATURE_DESC | $KEY_CRITERIA | $STATUS | $NOTES |" >> $MD_FILENAME
+          FEATURE_ID=$(echo "$item" | jq -r '.feature_id // empty')
+          FEATURE_DESC=$(echo "$item" | jq -r '.feature_description // empty')
+          KEY_CRITERIA=$(echo "$item" | jq -r '.key_criteria // empty')
+          STATUS=$(echo "$item" | jq -r '.status // empty')
+          NOTES=$(echo "$item" | jq -r '.notes // empty')
+
+          # Validate required fields
+          if [ -z "$FEATURE_ID" ]; then
+            echo "❌ Missing feature_id in item: $item" >&2
+            exit 1
+          fi
+
+          echo "| $FEATURE_ID | $FEATURE_DESC | $KEY_CRITERIA | $STATUS | $NOTES |" >> "$MD_FILENAME"
         done
-        
-        echo "Markdown file created: $MD_FILENAME"
+
+        echo "✅ Markdown file created: $MD_FILENAME" >&2
+        echo "::group::Generated Markdown"
+        cat "$MD_FILENAME"
+        echo "::endgroup::"
 
 
     - name: Set up Git
       shell: bash
-      if: env.MATCHING_FILES_STRING != '' && env.IS_FORK == 'false'
+      if: env.IS_FORK == 'false'
       run: |
         git config --global user.name "GitHub Actions"
         git config --global user.email "actions@github.com"
 
     - name: Generate dynamic branch name
       shell: bash
-      if: env.MATCHING_FILES_STRING != '' && env.IS_FORK == 'false'
+      if: env.IS_FORK == 'false'
       id: generate_branch_name
       run: |
         # Generate branch name based on timestamp
-        BRANCH_NAME="pm-$(date +'%Y%m%d%H%M%S')"  # Format: pm-YYYYMMDDHHMMSS
+        BRANCH_NAME="pm-requirement-alignment-$(date +'%Y%m%d%H%M%S')"  # Format: pm-YYYYMMDDHHMMSS
         echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
         echo "Generated branch name: ${BRANCH_NAME}"
 
