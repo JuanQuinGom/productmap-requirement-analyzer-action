@@ -1,0 +1,171 @@
+name: ProductMap Map Requirement Analyzer
+description: |
+  Generates a AI key features map, requirement analysis result via ProductMap tool, and retrieves generated map URLs.
+
+branding:
+  icon: "share-2"
+  color: "blue"
+
+inputs:
+  github_token:
+    description: 'GitHub Token'
+    required: true
+  user_email:
+    description: 'User email'
+    required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Ensures full commit history is fetched
+
+    - name: Check repository visibility
+      shell: bash
+      run: |
+        if [ "${{ github.event.repository.private }}" = "true" ]; then
+          echo "This is a private repository. The extension only works for public repositories."
+          exit 1
+        else
+          echo "This is a public repository."
+        fi
+
+    - name: Check if PR is from a fork
+      id: check_fork
+      shell: bash
+      run: |
+        if [[ "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
+          echo "This PR is coming from a fork. Skipping branch push and PR creation."
+          echo "IS_FORK=true" >> $GITHUB_ENV
+        else
+          echo "This PR is from the main repository"
+          echo "IS_FORK=false" >> $GITHUB_ENV
+        fi
+
+    - name: Get GitHub User Info
+      id: user-info
+      shell: bash
+      run: |
+        # Fetch user info from the GitHub API
+        {
+          USER_JSON=$(curl -s -H "Authorization: token ${{ inputs.github_token }}" \
+            -w "%{http_code}" \
+            https://api.github.com/users/${GITHUB_ACTOR})
+
+          # Extract HTTP status code (last 3 digits of USER_JSON)
+          HTTP_STATUS="${USER_JSON: -3}"
+          USER_JSON="${USER_JSON::-3}"  # Remove last 3 digits (HTTP code) to keep only JSON
+
+          
+          # Check if the API request was successful
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "Failed to fetch user info. HTTP Status: $HTTP_STATUS"
+            echo "API Response: $USER_JSON"
+          else
+           echo "User info fetched successfully"
+          fi
+          
+          # Verify that the response is valid JSON
+          if ! echo "$USER_JSON" | jq empty > /dev/null 2>&1; then
+            echo "Error: Invalid JSON response from GitHub API"
+            echo "Response received: $USER_JSON"
+            exit 1
+          fi
+        
+          # Extract username and email from API response stored in USER_JSON
+          NICKNAME=$(echo "$USER_JSON" | jq -r '.login')
+          PUBLIC_EMAIL=$(echo "$USER_JSON" | jq -r '.email')
+        
+          # Assign a default nickname if empty
+          if [ -z "$NICKNAME" ] || [ "$NICKNAME" == "null" ]; then
+            NICKNAME="public-user"
+          fi
+        
+        } || {
+          echo "Failed to fetch user info from GitHub API"
+          echo "Using default email and username"
+          NICKNAME="null"
+          PUBLIC_EMAIL="null"
+        }
+  
+        # Handle if the email is null (public email not set)
+        if [ "$PUBLIC_EMAIL" == "null" ]; then
+          echo "No public email available from GitHub API"
+          PUBLIC_EMAIL="No public email available"
+        fi
+
+        # Check if email is available from environment variable
+        if [ "$PUBLIC_EMAIL" == "No public email available" ] && [ ! -z "${{ inputs.user_email }}" ]; then
+          PUBLIC_EMAIL="${{ inputs.user_email }}"
+        fi
+
+        # Check if email is available from the most recent commit
+        if [ "$PUBLIC_EMAIL" == "No public email available" ]; then
+          echo "Trying to get email from the most recent commit"
+          COMMIT_EMAIL=$(git log -1 --pretty=format:'%ae')
+          PUBLIC_EMAIL=$COMMIT_EMAIL
+        fi
+        
+        # Print the obtained email for debugging
+        echo "Final email: $PUBLIC_EMAIL"
+        echo "Final nickname: $NICKNAME"
+        
+        # Evaluate if the email is still not available
+        if [ "$PUBLIC_EMAIL" == "No public email available" ]; then
+          echo "No public email available"
+          PUBLIC_EMAIL="null"
+          NICKNAME="null"
+        fi
+        
+        # Save to environment variables
+        echo "NICKNAME=$NICKNAME" >> $GITHUB_ENV
+        echo "PUBLIC_EMAIL=$PUBLIC_EMAIL" >> $GITHUB_ENV
+
+    - name: Install ProductMap CLI
+      shell: bash
+      run: |
+        echo "Installing ProductMap CLI"
+        pip install productmap-cli
+
+    - name: Generate and get requirements results for repository
+      shell: bash
+      if: env.MATCHING_FILES_STRING != ''
+      run: |
+        ALL_RESPONSES=""
+        FILE_NAMES=()
+        FILE_REPO_URLS=()
+        PUBLIC_URLS=()
+
+        # Detect if the repository is a fork and process files accordingly
+        REPO_URL="https://github.com/${{ github.repository }}"
+        BRANCH_NAME="${GITHUB_REF_NAME}"
+
+        echo "Processing files from repository: $REPO_URL on branch: $BRANCH_NAME"
+
+        
+        REPOSITORY_URL="${REPO_URL}/blob/${BRANCH_NAME}"
+        
+        # Send file to create a generated map and get the requirement analysis result
+        echo "Send file to create a generated map and get the requirement analysis result"
+        pm-cli "$FILE_URL" "$NICKNAME" "$PUBLIC_EMAIL" --action="analyze_requirements" > response.json
+        EXIT_CODE=$?
+        if [ $EXIT_CODE -ne 0 ]; then
+            echo "pm-cli failed with exit code $EXIT_CODE." >&2
+            cat response.json
+            exit $EXIT_CODE
+        fi
+          echo "Response from pm-cli:"
+          cat response.json
+          
+          # Append the response to the combined output
+          RESPONSE=$(tail -n 1 response.json)
+        
+          echo "Response from pm-cli:"
+          echo "$RESPONSE"
+        done
