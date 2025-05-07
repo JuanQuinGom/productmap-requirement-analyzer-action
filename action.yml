@@ -143,7 +143,7 @@ runs:
         echo "Processing files from repository: $REPO_URL on branch: $BRANCH_NAME"
         # Send file to create a generated map and get the requirement analysis result
         echo "Send file to create a generated map and get the requirement analysis result"
-        pm-cli "REPO_URL" "$NICKNAME" "$PUBLIC_EMAIL" --action="analyze_requirements" > response.json
+        pm-cli "$REPO_URL" "$NICKNAME" "$PUBLIC_EMAIL" --action="analyze_requirements" > response.json
         EXIT_CODE=$?
         if [ $EXIT_CODE -ne 0 ]; then
             echo "pm-cli failed with exit code $EXIT_CODE." >&2
