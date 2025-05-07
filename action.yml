@@ -157,6 +157,11 @@ runs:
         echo "Files in directory:"
         ls -la
         echo "::endgroup::"
+        
+        # Define constants
+        PRODUCT_MAP_LOGO_URL="https://product-map.ai/product_map_logo.png"
+        PRODUCT_MAP_HOME_URL="https://product-map.ai"
+        CONTACT_US_URL="https://product-map.ai"
 
         # Validate JSON file exists
         if [ ! -f "response.json" ]; then
@@ -191,7 +196,7 @@ runs:
 
         # Header with image
         echo "# ProductMap Requirement Alignment Results" > "$MD_FILENAME"
-        echo "" >> "$MD_FILENAME
+        echo "" >> "$MD_FILENAME"
         echo "<p align=\"center\"><a href=\"$PRODUCT_MAP_HOME_URL\" target=\"_blank\"><img src=\"$PRODUCT_MAP_LOGO_URL\" width=\"50%\"></a></p>\n" >> "$MD_FILENAME"
         echo "" >> "$MD_FILENAME"
         echo "**Creation Date:** $CONTENT_DATE" >> "$MD_FILENAME"
