@@ -243,7 +243,7 @@ runs:
         jq -c '.[]' response.json | while read -r item; do
           echo "Processing item: $item" >&2
           
-          REQ_ID=$(echo "$item" | jq -r '.req_id // empty')
+          REQ_ID=$(echo "$item" | jq -r '.requirement_id // empty')
           TITLE=$(echo "$item" | jq -r '.title // empty')
           CRITERION=$(echo "$item" | jq -r '.criterion // empty')
           STATUS=$(echo "$item" | jq -r '.status // empty')
