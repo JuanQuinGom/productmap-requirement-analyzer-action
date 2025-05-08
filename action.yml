@@ -159,7 +159,6 @@ runs:
         
           echo "Response from pm-cli:"
           echo "$RESPONSE"
-        done
 
     - name: Verify if folder alignment_results exists
       shell: bash
