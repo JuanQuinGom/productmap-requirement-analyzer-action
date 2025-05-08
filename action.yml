@@ -227,7 +227,7 @@ runs:
         # Header with image
         echo "# ProductMap Requirement Alignment Results" > "$MD_FILENAME"
         echo "" >> "$MD_FILENAME"
-        echo "<p align=\"center\"><a href=\"$PRODUCT_MAP_HOME_URL\" target=\"_blank\"><img src=\"$PRODUCT_MAP_LOGO_URL\" width=\"50%\"></a></p>\n" >> "$MD_FILENAME"
+        echo "<p align=\"center\"><a href=\"$PRODUCT_MAP_HOME_URL\" target=\"_blank\"><img src=\"$PRODUCT_MAP_LOGO_URL\" width=\"50%\"></a></p>" >> "$MD_FILENAME"
         echo "" >> "$MD_FILENAME"
         echo "**Creation Date:** $CONTENT_DATE" >> "$MD_FILENAME"
         echo "" >> "$MD_FILENAME"
@@ -311,15 +311,27 @@ runs:
       if: env.IS_FORK == 'false'
       run: |
         # Create the PR using the GitHub API
-        curl -X POST \
+        PR_RESPONSE=$(curl -X POST \
           -H "Authorization: token ${{ inputs.github_token }}" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/${{ github.repository }}/pulls \
           -d '{
-                "title": "Auto-generated PR for branch '${{ inputs.branch_name }}'",
+                "title": "ProductMap Requirement Alignment Results",
                 "head": "'${{ env.BRANCH_NAME }}'",
-                "base": "${{ inputs.target_branch }}",
-                "body": "This pull request was created automatically by GitHub Actions to merge the changes from '${{ inputs.branch_name }}' into the main branch."
-              }'
-
-
+                "base": "main",
+                "body": "This pull request was automatically created by ProductMap Action to add requirement alignment results."
+              }')
+        
+        # Extract PR number
+        PR_NUMBER=$(echo "$PR_RESPONSE" | jq -r '.number')
+        echo "Created PR #$PR_NUMBER"
+        
+        # Enable auto-merge if requested
+        if [[ "${{ inputs.auto_merge }}" == "true" && "$PR_NUMBER" != "null" ]]; then
+          echo "Enabling auto-merge for PR #$PR_NUMBER"
+          curl -X PUT \
+            -H "Authorization: token ${{ inputs.github_token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls/$PR_NUMBER/auto_merge \
+            -d '{"merge_method": "squash"}'
+        fi
