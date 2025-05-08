@@ -229,33 +229,34 @@ runs:
         echo "" >> "$MD_FILENAME"
         echo "<p align=\"center\"><a href=\"$PRODUCT_MAP_HOME_URL\" target=\"_blank\"><img src=\"$PRODUCT_MAP_LOGO_URL\" width=\"50%\"></a></p>" >> "$MD_FILENAME"
         echo "" >> "$MD_FILENAME"
+        echo "The following table shows the aligment found by ProductMap between the Requirements provided and the implemented Features of the repository." >> "$MD_FILENAME"
         echo "**Creation Date:** $CONTENT_DATE" >> "$MD_FILENAME"
         echo "" >> "$MD_FILENAME"
-        echo "## Analysis Results" >> "$MD_FILENAME"
-        echo "" >> "$MD_FILENAME"
-
+        
         # Table
-        echo "| Feature ID | Feature Description | Key Criteria | Status | Notes |" >> "$MD_FILENAME"
-        echo "|-----------|---------------------|--------------|--------|-------|" >> "$MD_FILENAME"
+        echo "| Req. ID | Title | Criterion | Status | Explanation | Feature ID |" >> "$MD_FILENAME"
+        echo "|-----------|---------------------|---------------------|--------|-------|-----------------| " >> "$MD_FILENAME"
+        
 
         # Process JSON
         echo "ℹ️ Processing JSON data..." >&2
         jq -c '.[]' response.json | while read -r item; do
           echo "Processing item: $item" >&2
           
-          FEATURE_ID=$(echo "$item" | jq -r '.feature_id // empty')
-          FEATURE_DESC=$(echo "$item" | jq -r '.feature_description // empty')
-          KEY_CRITERIA=$(echo "$item" | jq -r '.key_criteria // empty')
+          REQ_ID=$(echo "$item" | jq -r '.req_id // empty')
+          TITLE=$(echo "$item" | jq -r '.title // empty')
+          CRITERION=$(echo "$item" | jq -r '.criterion // empty')
           STATUS=$(echo "$item" | jq -r '.status // empty')
-          NOTES=$(echo "$item" | jq -r '.notes // empty')
+          EXPLANATION=$(echo "$item" | jq -r '.explanation // empty')
+          FEATURE=$(echo "$item" | jq -r '.feature // empty')
 
           # Validate required fields
-          if [ -z "$FEATURE_ID" ]; then
-            echo "❌ Missing feature_id in item: $item" >&2
+          if [ -z "$REQ_ID" ]; then
+            echo "❌ Missing req_id in item: $item" >&2
             exit 1
           fi
 
-          echo "| $FEATURE_ID | $FEATURE_DESC | $KEY_CRITERIA | $STATUS | $NOTES |" >> "$MD_FILENAME"
+          echo "| $REQ_ID | $TITLE | $CRITERION | $STATUS | $EXPLANATION | $FEATURE |" >> "$MD_FILENAME"
         done
 
         echo "✅ Markdown file created: $MD_FILENAME" >&2
