@@ -209,91 +209,22 @@ runs:
         echo "Response from pm-cli:"
         echo "$RESPONSE"
 
-    
-
-    - name: Create markdown file with results
+    - name: Create simple markdown with expected_key value
       shell: bash
       run: |
-        # Access alignment_results directory
-        cd alignment_results || exit 1
-        echo "Current directory: $(pwd)"
-        echo "Contents of alignment_results directory:"
-        ls -la
-        echo "Creating markdown file with results"
-        
-        # Debug: Show environment info
-        echo "::group::Debug Info"
-        echo "PWD: $(pwd)"
-        echo "Files in directory:"
-        ls -la
-        echo "::endgroup::"
-        
-        # Define constants
-        PRODUCT_MAP_LOGO_URL="https://product-map.ai/product_map_logo.png"
-        PRODUCT_MAP_HOME_URL="https://product-map.ai"
-        CONTACT_US_URL="https://product-map.ai"
-
-        # Validate jq is installed
-        if ! command -v jq &> /dev/null; then
-          echo "❌ Error: jq not installed!" >&2
-          exit 1
-        fi
-
-        # Validate JSON syntax
-        if ! jq empty alignment_results/response.json; then
-          echo "❌ Invalid JSON in response.json!" >&2
-          exit 1
-        fi
-
-        echo "::group::JSON Content"
-        cat alignment_results/response.json
-        echo "::endgroup::"
-
-        # Create markdown with error handling
-        set -euo pipefail  # Enable strict mode
-
+        # Create markdown file with just the expected_key value
         FILENAME_DATE=$(date +'%H:%M:%S_%d%m%y')
-        CONTENT_DATE=$(date +'%Y-%m-%d %H:%M:%S')
         MD_FILENAME="alignment_results/requirement_analysis_results_${FILENAME_DATE}.md"
-
-        echo "ℹ️ Starting markdown generation..." >&2
-
-        # Header with image
-        echo "# ProductMap Requirement Alignment Results" > "$MD_FILENAME"
+        
+        echo "# ProductMap Requirement Analysis" > "$MD_FILENAME"
         echo "" >> "$MD_FILENAME"
-        echo "<p align=\"center\"><a href=\"$PRODUCT_MAP_HOME_URL\" target=\"_blank\"><img src=\"$PRODUCT_MAP_LOGO_URL\" width=\"50%\"></a></p>" >> "$MD_FILENAME"
-        echo "" >> "$MD_FILENAME"
-        echo "The following table shows the aligment found by ProductMap between the Requirements provided and the implemented Features of the repository." >> "$MD_FILENAME"
-        echo "**Creation Date:** $CONTENT_DATE" >> "$MD_FILENAME"
-        echo "" >> "$MD_FILENAME"
-
-        # Table
-        echo "| Req. ID | Title | Criterion | Status | Explanation | Feature ID |" >> "$MD_FILENAME"
-        echo "|-----------|---------------------|---------------------|--------|-------|-----------------| " >> "$MD_FILENAME"
-
-        # Process JSON
-        echo "ℹ️ Processing JSON data..." >&2
-        jq -c '.[]' alignment_results/response.json | while read -r item; do
-          echo "Processing item: $item" >&2
-
-          REQ_ID=$(echo "$item" | jq -r '.requirement_id // empty')
-          TITLE=$(echo "$item" | jq -r '.title // empty')
-          CRITERION=$(echo "$item" | jq -r '.criterion // empty')
-          STATUS=$(echo "$item" | jq -r '.status // empty')
-          EXPLANATION=$(echo "$item" | jq -r '.explanation // empty')
-          FEATURE=$(echo "$item" | jq -r '.feature // empty')
-
-          # Validate required fields
-          if [ -z "$REQ_ID" ]; then
-            echo "❌ Missing req_id in item: $item" >&2
-            exit 1
-          fi
-
-          echo "| $REQ_ID | $TITLE | $CRITERION | $STATUS | $EXPLANATION | $FEATURE |" >> "$MD_FILENAME"
-        done
-
-        echo "✅ Markdown file created: $MD_FILENAME" >&2
-        echo "::group::Generated Markdown"
+        
+        # Extract and add the expected_key value
+        EXPECTED_VALUE=$(jq -r '.expected_key' alignment_results/response.json)
+        echo "$EXPECTED_VALUE" >> "$MD_FILENAME"
+        
+        echo "Markdown file created at: $MD_FILENAME"
+        echo "::group::Markdown Content"
         cat "$MD_FILENAME"
         echo "::endgroup::"
 
