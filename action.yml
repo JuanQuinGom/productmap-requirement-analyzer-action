@@ -152,14 +152,52 @@ runs:
         BRANCH_NAME="${GITHUB_REF_NAME}"
         
         echo "Processing files from repository: $REPO_URL on branch: $BRANCH_NAME"
-        # Send file to create a generated map and get the requirement analysis result
-        echo "Send file to create a generated map and get the requirement analysis result"
-        pm-cli "$REPO_URL" "$NICKNAME" "$PUBLIC_EMAIL" --action="analyze_requirements" > alignment_results/response.json
-        EXIT_CODE=$?
-        if [ $EXIT_CODE -ne 0 ]; then
-            echo "pm-cli failed with exit code $EXIT_CODE." >&2
-            cat alignment_results/response.json
-            exit $EXIT_CODE
+        
+        # Initialize counter for retry attempts
+        ATTEMPTS=0
+        MAX_ATTEMPTS=120
+        SUCCESS=false
+        
+        # Loop until success or max attempts reached
+        while [ $ATTEMPTS -lt $MAX_ATTEMPTS ] && [ "$SUCCESS" = false ]; do
+          ATTEMPTS=$((ATTEMPTS + 1))
+          echo "Attempt $ATTEMPTS of $MAX_ATTEMPTS"
+          
+          echo "Send file to create a generated map and get the requirement analysis result"
+          pm-cli "$REPO_URL" "$NICKNAME" "$PUBLIC_EMAIL" --action="analyze_requirements" > alignment_results/response.json
+          EXIT_CODE=$?
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+              echo "pm-cli failed with exit code $EXIT_CODE." >&2
+              cat alignment_results/response.json
+              
+              # Don't exit, continue with retry logic
+              echo "Will retry in 30 seconds..."
+              sleep 30
+              continue
+          fi
+          
+          # Check if the response contains the specific value in a key
+          # Replace "expected_key" and "expected_value" with your actual key and value
+          if jq -e '.expected_key == "expected_value"' alignment_results/response.json > /dev/null 2>&1; then
+              echo "Found expected value in response!"
+              SUCCESS=true
+          else
+              echo "Expected value not found in response. Will retry in 30 seconds..."
+              
+              # Show current response for debugging
+              echo "Current response:"
+              cat alignment_results/response.json
+              
+              if [ $ATTEMPTS -lt $MAX_ATTEMPTS ]; then
+                  sleep 30
+              fi
+          fi
+        done
+        
+        if [ "$SUCCESS" = false ]; then
+            echo "Failed to get the expected response after $MAX_ATTEMPTS attempts."
+            exit 1
         fi
         
         echo "Response from pm-cli:"
